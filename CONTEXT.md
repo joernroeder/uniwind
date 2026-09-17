@@ -98,15 +98,24 @@ Shared runtime:
 
 Configuration shape:
 
-- `cssEntryFile`: required CSS entry path, resolved from `process.cwd()`.
+- `cssEntryFile`: required CSS entry path, resolved from `process.cwd()`. A sibling platform file overrules it for that platform.
 - `extraThemes`: optional named themes added to default `light` and `dark`.
 - `dtsFile`: optional generated declaration file path, default `uniwind-types.d.ts`.
 - Metro-only `polyfills.rem`: custom rem base, default `16`.
 - Metro-only `debug` and `isTV` flags exist in types.
 
+Platform entry files:
+
+- `UniwindBundlerConfig.cssPath` resolves a sibling `<entry>.<platform>.css` before falling back to the configured `cssEntryFile`, mirroring how Metro resolves `.ios` / `.native` modules.
+- Suffixes are the platform variants in `artifacts/css/variants.ts`: `ios`, `android`, `web`, `native`, `tv`, `android-tv`, `apple-tv`.
+- Order is most specific first — `ios` then `native`, `apple-tv` then `tv` then `ios` then `native`. Web never falls back to `native`.
+- Only `cssPath` is affected. `cssEntryFile` remains the configured path, the identity the Metro transformer matches, and the module Metro transforms.
+- `generateArtifacts` deliberately still reads `cssEntryFile`: the theme artifact is one file per install, so a per-platform value there would let web and native transforms overwrite each other.
+- Each entry compiles independently, so every entry must carry the full set of bare imports (`tailwindcss`, `uniwind`, ...). Shared content belongs in a file the entries `@import`.
+
 Compilation flow:
 
-- `compileTailwind` reads `cssEntryFile`, runs Tailwind v4 compile, scans files under the CSS entry directory, and builds final CSS.
+- `compileTailwind` reads `cssPath`, runs Tailwind v4 compile, scans files under the CSS entry directory, and builds final CSS.
 - `compileCSS` routes to web or native by platform.
 - `compileWebCSS` runs Lightning CSS with `UniwindCSSVisitor` and returns CSS.
 - `compileNativeCSS` runs `ProcessorBuilder`, serializes variables, scoped variables, and native stylesheet metadata into JS source.
