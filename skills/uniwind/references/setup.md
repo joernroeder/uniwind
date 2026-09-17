@@ -59,6 +59,30 @@ module.exports = withUniwindConfig(withOtherConfig(config, opts), { cssEntryFile
 module.exports = withOtherConfig(withUniwindConfig(config, { cssEntryFile: './global.css' }), opts);
 ```
 
+### Platform entry files
+
+A file named after a platform, sitting beside `cssEntryFile`, overrules it when Uniwind compiles for that platform — the same way Metro resolves `.ios` / `.native` modules. Keep pointing `cssEntryFile` at the base entry; the suffixed file is picked up behind it.
+
+```
+global.css          # the configured entry, and the fallback for every platform
+global.web.css      # used on web instead
+global.native.css   # used on iOS and Android instead
+global.ios.css      # used on iOS, in preference to global.native.css
+```
+
+Suffixes are the platform variants Uniwind already generates — `ios`, `android`, `web`, `native`, `tv`, `android-tv`, `apple-tv` — so an entry is named after the prefix you would otherwise write inside it. Resolution is most-specific-first, and web never falls back to `native`.
+
+Use it when a platform needs stylesheets the others must not get — web-only vendor CSS you override, for instance, which would otherwise be compiled into the native bundle as dead weight:
+
+```css
+/* global.web.css */
+@import 'tailwindcss';
+@import 'uniwind';
+@import './vendor-overrides.css';
+```
+
+Each entry is compiled on its own, so every one of them must carry the full set of bare imports (`tailwindcss`, `uniwind`, …). Put the shared remainder in a file they both `@import`.
+
 ### Vite Configuration (v1.2.0+)
 
 If user has storybook setup, add extra vite config:

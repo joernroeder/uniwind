@@ -4,7 +4,25 @@ import { UniwindCSSVisitor } from '@/bundler/css-visitor'
 import type { UniwindConfig, UniwindMetroConfig } from '@/bundler/types'
 import { Platform } from '@/common/consts'
 import { isDefined } from '@/common/utils'
+import fs from 'fs'
 import path from 'path'
+
+/**
+ * Which suffixed entries a platform accepts, most specific first.
+ *
+ * Mirrors how Metro resolves `.ios` / `.native` modules, including that web never falls back
+ * to `.native`. The suffixes are the platform variants Uniwind already generates, so an entry
+ * is named after the prefix you would otherwise write inside it.
+ */
+const CSS_ENTRY_PLATFORM_FALLBACKS: Record<Platform, Array<Platform>> = {
+    [Platform.Web]: [Platform.Web],
+    [Platform.iOS]: [Platform.iOS, Platform.Native],
+    [Platform.Android]: [Platform.Android, Platform.Native],
+    [Platform.Native]: [Platform.Native],
+    [Platform.TV]: [Platform.TV, Platform.Native],
+    [Platform.AndroidTV]: [Platform.AndroidTV, Platform.TV, Platform.Android, Platform.Native],
+    [Platform.AppleTV]: [Platform.AppleTV, Platform.TV, Platform.iOS, Platform.Native],
+}
 
 export class UniwindBundlerConfig {
     static fromMetroConfig(config: UniwindMetroConfig, platform?: string | null) {
@@ -57,8 +75,27 @@ export class UniwindBundlerConfig {
 
     constructor(private readonly config: UniwindMetroConfig, readonly platform: Platform) {}
 
+    /**
+     * The stylesheet to compile, honouring a platform file beside the configured entry.
+     *
+     * `global.web.css` overrules `global.css` on web, `global.native.css` does on both native
+     * platforms, and so on. The configured entry stays the fallback and the identity of the
+     * module Metro transforms, so nothing else in the pipeline needs to know.
+     */
     get cssPath() {
-        return path.join(process.cwd(), this.config.cssEntryFile)
+        const entryPath = path.join(process.cwd(), this.config.cssEntryFile)
+        const extension = path.extname(entryPath)
+        const stem = entryPath.slice(0, entryPath.length - extension.length)
+
+        for (const suffix of CSS_ENTRY_PLATFORM_FALLBACKS[this.platform] ?? []) {
+            const platformEntryPath = `${stem}.${suffix}${extension}`
+
+            if (fs.existsSync(platformEntryPath)) {
+                return platformEntryPath
+            }
+        }
+
+        return entryPath
     }
 
     get themes() {
