@@ -108,7 +108,15 @@ Platform entry files:
 
 - `UniwindBundlerConfig.cssPath` resolves a sibling `<entry>.<platform>.css` before falling back to the configured `cssEntryFile`, mirroring how Metro resolves `.ios` / `.native` modules.
 - Suffixes are the platform variants in `artifacts/css/variants.ts`: `ios`, `android`, `web`, `native`, `tv`, `android-tv`, `apple-tv`.
-- Order is most specific first — `ios` then `native`, `apple-tv` then `tv` then `ios` then `native`. Web never falls back to `native`.
+- Each platform tries its suffixes in order, most specific first, then falls back to the configured entry:
+    - `web`: `web`
+    - `ios`: `ios`, `native`
+    - `android`: `android`, `native`
+    - `native`: `native`
+    - `tv`: `tv`, `native`
+    - `android-tv`: `android-tv`, `tv`, `android`, `native`
+    - `apple-tv`: `apple-tv`, `tv`, `ios`, `native`
+- Web is the only platform with no `native` fallback, matching how Metro resolves modules.
 - Only `cssPath` is affected. `cssEntryFile` remains the configured path, the identity the Metro transformer matches, and the module Metro transforms.
 - `generateArtifacts` deliberately still reads `cssEntryFile`: the theme artifact is one file per install, so a per-platform value there would let web and native transforms overwrite each other.
 - Each entry compiles independently, so every entry must carry the full set of bare imports (`tailwindcss`, `uniwind`, ...). Shared content belongs in a file the entries `@import`.
